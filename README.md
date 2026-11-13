@@ -1,36 +1,169 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Invoice Generator
 
-## Getting Started
+A small-team invoicing app built with Next.js. Create and issue invoices, download them as PDFs, record client payments with numbered receipts, and keep track of business expenses with their receipt files.
 
-First, run the development server:
+## Features
+
+- **Clients**: create, edit, archive and restore clients; each client has its own invoice history.
+- **Invoices**
+  - Draft invoices with line items, quantities (up to 3 decimals), per-line tax and a percent or fixed discount. Totals update live and are recalculated on the server.
+  - **Issuing** gives an invoice a gap-free number (`INV-0001`, `INV-0002`, …) and locks it from editing.
+  - Void (owner only) and duplicate-as-draft.
+  - **PDF** download with DRAFT, VOID and PAID watermarks.
+  - Status filter: Draft, Issued, Partially paid, Overdue, Paid, Void. Overdue is worked out from the due date in the business timezone, so no scheduled job is needed.
+- **Payments & receipts**
+  - Record full or partial payments; the invoice status updates automatically and overpayments are refused.
+  - Each payment gets a receipt number (`RCT-0001`, …) and a downloadable **receipt PDF**.
+  - Payments are never edited or deleted. The owner can **reverse** one, which recalculates the invoice and marks the receipt REVERSED.
+- **Expenses**
+  - Record vendor, category, amount, currency, date and notes, with a receipt photo or PDF attached.
+  - Uploads are checked by their actual content (JPG, PNG, WebP or PDF, up to 4 MB) and stored privately.
+  - Filter by month, category or search, with totals per currency.
+- **Team & access**
+  - Email/password login through Neon Auth.
+  - A `members` table controls who can use the app, with owner and member roles enforced on the server.
+  - Public sign-up is disabled.
+- **Business settings**: name, address, tax ID, default currency, tax rate, payment terms, timezone and number prefixes.
+
+## Tech stack
+
+| Area | Choice |
+| --- | --- |
+| Framework | Next.js 16 (App Router, Server Actions), React 19, TypeScript |
+| UI | Tailwind CSS v4, shadcn/ui (Base UI), lucide-react, sonner |
+| Database | Neon Postgres with Drizzle ORM and drizzle-kit migrations |
+| Auth | Neon Auth (managed Better Auth) via `@neon/auth` |
+| PDFs | `@react-pdf/renderer` with the Inter font (no headless browser needed) |
+| File storage | Local disk in development, private Vercel Blob in production |
+| Validation | Zod |
+| Tests | Vitest |
+
+## Getting started
+
+### Prerequisites
+
+- Node.js 20.9 or newer
+- A [Neon](https://neon.tech) project with **Auth** enabled (Console → your project → Auth)
+
+### 1. Install
+
+```bash
+git clone https://github.com/flysolomons/ie-invoice-gen.git
+cd ie-invoice-gen
+npm install
+```
+
+### 2. Configure environment
+
+Copy the example file and fill it in:
+
+```bash
+cp .env.example .env.local
+```
+
+| Variable | Required | Description |
+| --- | --- | --- |
+| `DATABASE_URL` | yes | Neon Postgres connection string. Any other Postgres URL also works locally. |
+| `NEON_AUTH_BASE_URL` | yes | Your Auth URL from Neon Console → Auth → Configuration |
+| `NEON_AUTH_COOKIE_SECRET` | yes | 32+ random characters for signing session cookies |
+| `APP_URL` | yes | Public URL of the app, e.g. `http://localhost:3000` |
+| `STORAGE_DRIVER` | no | `local` or `vercel-blob`. If blank, Vercel Blob is used when a token is set, otherwise local disk. |
+| `BLOB_READ_WRITE_TOKEN` | prod | Set automatically when you connect a Vercel Blob store |
+| `SEED_OWNER_EMAIL` / `SEED_OWNER_PASSWORD` / `SEED_OWNER_NAME` | setup | The first owner account, created by `npm run seed` |
+
+Generate a cookie secret with:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+```
+
+> `.env.local` is git-ignored. Never commit real credentials.
+
+### 3. Create the database tables
+
+```bash
+npm run db:migrate
+```
+
+### 4. Create the owner account
+
+Set `SEED_OWNER_*` in `.env.local`, then run:
+
+```bash
+npm run seed
+```
+
+This creates the owner in Neon Auth, links them as an **owner** member, and adds the business settings row and default expense categories. It's safe to run again.
+
+### 5. Run it
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000, sign in with the owner account, then fill in **Settings** (business details, currency, timezone) before creating invoices.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Start the development server |
+| `npm run build` / `npm start` | Production build and server |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | TypeScript checks |
+| `npm test` | Unit tests (Vitest) |
+| `npm run db:generate` | Create a migration after changing `src/db/schema.ts` |
+| `npm run db:migrate` | Apply pending migrations |
+| `npm run db:studio` | Browse the database with Drizzle Studio |
+| `npm run seed` | Create or link the owner account and default data |
 
-## Learn More
+## Deploying to Vercel
 
-To learn more about Next.js, take a look at the following resources:
+1. Import the repository into Vercel.
+2. Add the environment variables `DATABASE_URL`, `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET`, and `APP_URL` (your production URL).
+3. **Storage → Create → Blob** and connect it to the project. This sets `BLOB_READ_WRITE_TOKEN`, and receipt uploads go to private Blob storage. Uploads fail with a clear error if no Blob store is connected, because Vercel's filesystem is read-only.
+4. In Neon Console → Auth, add your Vercel domain as a **trusted domain**.
+5. Run `npm run db:migrate` against the production database before the first deploy, and `npm run seed` once to create the owner.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Optionally, turn off **sign-up** in Neon Console → Auth → Configuration. The app already blocks sign-up through its own routes, and accounts that aren't in `members` can't get in.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Project structure
 
-## Deploy on Vercel
+```
+src/
+  app/
+    (auth)/            login, no-access, sign-in/out actions
+    (app)/             signed-in pages: dashboard, invoices, clients,
+                       payments, expenses, settings (+ server actions)
+    api/
+      auth/[...path]   Neon Auth proxy (sign-up blocked)
+      invoices/[id]/pdf
+      payments/[id]/receipt
+      expenses/[id]/file
+  components/          app components and shadcn/ui primitives
+  db/                  Drizzle schema, client and migrations
+  lib/                 pure logic: money, invoice totals, status rules,
+                       validation, upload checks, PDF templates
+  server/              server-only queries, numbering, storage, PDF rendering
+  proxy.ts             route protection (Next.js 16 "proxy", formerly middleware)
+scripts/seed.ts        owner and default data setup
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Design notes
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Money** is stored as integer cents and never calculated with floating point. Totals are recalculated on the server on every save. Discounts are spread across lines before tax, and leftover cents are allocated so the parts always add up exactly.
+- **Numbering** uses a row-locked counter inside the issuing transaction, so invoice and receipt numbers are unique and have no gaps, even when several people issue at once.
+- **Issued invoices are immutable.** To correct one, void it and duplicate it. Voided numbers stay used.
+- **Payments** lock the invoice row while recording, so concurrent payments can't exceed the balance. The database also enforces `paid ≤ total`.
+- **Access control**: `src/proxy.ts` redirects signed-out visitors. Every page, server action and file route also checks membership and role on the server.
+- **Uploads** are identified by their content, not by file name or browser-reported type. They're stored under random keys and served with `nosniff` and a sandboxing Content-Security-Policy.
+
+## Roadmap
+
+- [ ] Dashboard: outstanding, overdue, received this month, expenses this month
+- [ ] Team invites via shareable invite links
+- [ ] Optional emailing of invoices and receipts (Resend/SMTP); the schema already has an email log
+
+## Licence
+
+No licence has been chosen yet, so all rights are reserved by default.
