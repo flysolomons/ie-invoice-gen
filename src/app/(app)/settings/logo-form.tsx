@@ -2,12 +2,22 @@
 
 import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
+import { BrandLogo } from "@/components/app/brand-logo";
 import { ConfirmActionButton } from "@/components/app/confirm-action-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { type LogoState, removeLogo, uploadLogo } from "./actions";
 
-export function LogoForm({ hasLogo, version, readOnly }: { hasLogo: boolean; version: string; readOnly: boolean }) {
+export function LogoForm({
+  logoVersion,
+  businessName,
+  readOnly,
+}: {
+  logoVersion: string | null;
+  businessName: string;
+  readOnly: boolean;
+}) {
+  const hasLogo = !!logoVersion;
   const [state, action, pending] = useActionState<LogoState, FormData>(uploadLogo, null);
 
   useEffect(() => {
@@ -17,12 +27,12 @@ export function LogoForm({ hasLogo, version, readOnly }: { hasLogo: boolean; ver
   return (
     <div className="grid gap-3">
       {hasLogo ? (
-        // eslint-disable-next-line @next/next/no-img-element -- private, auth-gated image
-        <img
-          // version busts the browser cache after a replace
-          src={`/api/settings/logo?v=${version}`}
-          alt="Business logo"
-          className="h-20 w-fit max-w-full rounded border bg-white object-contain p-2"
+        <BrandLogo
+          logoVersion={logoVersion}
+          name={businessName}
+          plate
+          plateClassName="w-fit rounded-lg p-2 shadow-none"
+          className="h-16 w-auto"
         />
       ) : (
         <p className="text-sm text-muted-foreground">

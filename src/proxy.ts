@@ -6,7 +6,7 @@ import { auth } from "@/lib/auth";
  */
 export default auth.middleware({
   loginUrl: "/login",
-  publicRoutes: ["/login", "/accept-invite", "/p", "/api/p"],
+  publicRoutes: ["/login", "/accept-invite", "/p", "/api/p", "/api/branding"],
 });
 
 export const config = {

@@ -50,7 +50,7 @@ export default async function InvoicesPage({
         }
       />
 
-      <nav aria-label="Filter by status" className="flex gap-1 overflow-x-auto">
+      <nav aria-label="Filter by status" className="flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {TABS.map((s) => (
           <Link
             key={s}

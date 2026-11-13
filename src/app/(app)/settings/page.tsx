@@ -28,11 +28,7 @@ export default async function SettingsPage() {
         <p className="text-sm text-muted-foreground">
           Shown at the top of invoice and receipt PDFs. PNG or JPG, up to 4 MB.
         </p>
-        <LogoForm
-          hasLogo={!!settings.logoKey}
-          version={settings.logoKey ?? "none"}
-          readOnly={!isOwner}
-        />
+        <LogoForm logoVersion={settings.logoKey} businessName={settings.name} readOnly={!isOwner} />
       </section>
       <SettingsForm
         readOnly={!isOwner}

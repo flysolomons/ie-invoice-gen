@@ -91,7 +91,8 @@ export async function uploadLogo(_prev: LogoState, formData: FormData): Promise<
     .onConflictDoUpdate({ target: businessSettings.id, set: { logoKey: key } });
   if (old?.logoKey) await storage.delete(old.logoKey).catch(() => {});
 
-  revalidatePath("/settings");
+  // The logo also appears in the sidebar and on the login page.
+  revalidatePath("/", "layout");
   return { ok: true };
 }
 
@@ -100,6 +101,6 @@ export async function removeLogo(): Promise<{ error?: string }> {
   const [old] = await db.select({ logoKey: businessSettings.logoKey }).from(businessSettings);
   await db.update(businessSettings).set({ logoKey: null }).where(eq(businessSettings.id, 1));
   if (old?.logoKey) await getStorage().delete(old.logoKey).catch(() => {});
-  revalidatePath("/settings");
+  revalidatePath("/", "layout");
   return {};
 }
