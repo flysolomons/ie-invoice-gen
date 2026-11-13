@@ -103,6 +103,38 @@ npm run dev
 
 Open http://localhost:3000, sign in with the owner account, then fill in **Settings** (business details, currency, timezone) before creating invoices.
 
+## Adding users: Microsoft sign-in
+
+Staff sign in with their work Microsoft account. Anyone whose **verified** email is on an allowed domain (for example `@flysolomons.com` or `@flysolomons.com.sb`) joins automatically as a **member**. Owners then manage people under **Settings → Team**: they can make someone an owner, demote them to member, or remove and restore access. A removed person can't get back in by signing in again.
+
+### 1. Register the app in Microsoft Entra (IT admin)
+
+1. Go to [entra.microsoft.com](https://entra.microsoft.com), then **Entra ID → App registrations → New registration**.
+   - **Name:** `Invoices`.
+   - **Supported account types:** **Accounts in this organizational directory only (single tenant)**.
+   - **Redirect URI:** platform **Web**, value `{NEON_AUTH_BASE_URL}/callback/microsoft`. Copy the exact value from the Neon Console's "Add OAuth provider" dialog. Add one per Neon branch you use.
+2. Copy the **Application (client) ID** and the **Directory (tenant) ID** from the Overview page.
+3. Under **Certificates & secrets**, create a **New client secret** and copy its **Value**. It is shown only once. Note the expiry date and renew it before then.
+4. Under **Token configuration → Add optional claim → ID**, select **`acct`**, **`xms_edov`** and **`email`**, then accept the Microsoft Graph `email` permission prompt.
+   > This step is required. Without these claims Microsoft doesn't confirm that the email belongs to your organisation, Neon Auth treats it as unverified, and **nobody is let in automatically**. Guests and personal Microsoft accounts are never treated as verified.
+
+### 2. Add the provider in Neon (owner)
+
+1. In Neon Console, open your project and branch, then **Settings → Auth → OAuth providers → Add OAuth provider → Microsoft**.
+2. Enter the Client ID and Client Secret, and set the **tenant** to your Directory (tenant) ID. This restricts sign-in to your organisation.
+3. Under **Trusted domains**, add `http://localhost:3000` for development and your production URL, e.g. `https://invoices.example.com`.
+
+### 3. Switch it on in the app
+
+Set these in `.env.local` locally and in your Vercel project's environment variables:
+
+```bash
+AUTH_MICROSOFT_ENABLED=true
+ALLOWED_EMAIL_DOMAINS=flysolomons.com,flysolomons.com.sb
+```
+
+Domains must match exactly: `flysolomons.com` does not allow `mail.flysolomons.com` or look-alike domains. With `ALLOWED_EMAIL_DOMAINS` empty, nobody joins automatically.
+
 ## Scripts
 
 | Command | What it does |

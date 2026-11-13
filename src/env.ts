@@ -9,6 +9,24 @@ const schema = z.object({
   NEON_AUTH_BASE_URL: z.string().url(),
   NEON_AUTH_COOKIE_SECRET: z.string().min(32),
   APP_URL: z.string().url().default("http://localhost:3000"),
+  /**
+   * Comma-separated email domains whose verified Microsoft sign-ins join
+   * automatically as members, e.g. "flysolomons.com,flysolomons.com.sb".
+   */
+  ALLOWED_EMAIL_DOMAINS: z
+    .string()
+    .default("")
+    .transform((v) =>
+      v
+        .split(",")
+        .map((d) => d.trim().toLowerCase().replace(/^@/, ""))
+        .filter(Boolean),
+    ),
+  /** Show "Sign in with Microsoft" (needs the provider configured in Neon Auth). */
+  AUTH_MICROSOFT_ENABLED: z
+    .enum(["true", "false", ""])
+    .default("false")
+    .transform((v) => v === "true"),
   EMAIL_PROVIDER: z.enum(["console", "resend", "smtp"]).default("console"),
   EMAIL_FROM: z.string().default("Invoices <invoices@example.com>"),
   /** Defaults to vercel-blob when BLOB_READ_WRITE_TOKEN is set, else local. */

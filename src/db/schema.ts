@@ -37,6 +37,8 @@ export const members = pgTable("members", {
   email: text("email").notNull().unique(),
   name: text("name").notNull(),
   role: userRole("role").notNull().default("member"),
+  /** Set when an owner removes someone; blocks access and automatic re-joining. */
+  disabledAt: timestamp("disabled_at", { withTimezone: true }),
   ...timestamps,
 });
 

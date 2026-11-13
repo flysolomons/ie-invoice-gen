@@ -16,14 +16,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar";
+import { initials } from "@/lib/initials";
 import type { SessionUser } from "@/lib/session";
 
 const SIGN_OUT_FORM = "sign-out-form";
-
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  return ((parts[0]?.[0] ?? "") + (parts.length > 1 ? parts.at(-1)![0] : "")).toUpperCase() || "?";
-}
 
 function UserIdentity({ user }: { user: SessionUser }) {
   return (

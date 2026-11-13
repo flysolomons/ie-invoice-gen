@@ -6,6 +6,7 @@ import {
   type LucideIcon,
   Receipt,
   Settings,
+  ShieldCheck,
   Users,
   Wallet,
 } from "lucide-react";
@@ -40,6 +41,7 @@ const MAIN_NAV: NavItem[] = [
   { href: "/expenses", label: "Expenses", icon: Receipt },
 ];
 const SYSTEM_NAV: NavItem[] = [{ href: "/settings", label: "Settings", icon: Settings }];
+const OWNER_NAV: NavItem[] = [{ href: "/settings/team", label: "Team", icon: ShieldCheck }];
 
 /** Navy pill for the current page (overrides the default subtle accent). */
 const ACTIVE_PILL =
@@ -54,7 +56,10 @@ function NavGroup({ label, items }: { label: string; items: NavItem[] }) {
       <SidebarGroupContent>
         <SidebarMenu>
           {items.map(({ href, label, icon: Icon }) => {
-            const active = pathname === href || pathname.startsWith(`${href}/`);
+            // Longest matching item wins, so /settings/team highlights Team, not Settings.
+            const active =
+              (pathname === href || pathname.startsWith(`${href}/`)) &&
+              !items.some((o) => o.href.length > href.length && pathname.startsWith(o.href));
             return (
               <SidebarMenuItem key={href}>
                 <SidebarMenuButton
@@ -114,7 +119,10 @@ export function AppSidebar({
       </SidebarHeader>
       <SidebarContent>
         <NavGroup label="Workspace" items={MAIN_NAV} />
-        <NavGroup label="System" items={SYSTEM_NAV} />
+        <NavGroup
+          label="System"
+          items={user.role === "owner" ? [...SYSTEM_NAV, ...OWNER_NAV] : SYSTEM_NAV}
+        />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={user} />

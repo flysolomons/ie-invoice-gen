@@ -18,8 +18,9 @@ export default function NoAccessPage() {
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold">You&rsquo;re not on this team yet</h1>
           <p className="text-muted-foreground">
-            Your account exists, but it hasn&rsquo;t been added to this business. Ask the owner to
-            send you an invite.
+            You&rsquo;re signed in, but this account doesn&rsquo;t have access yet. Staff should
+            sign in with their work Microsoft account; if you did and still see this, ask an owner
+            to add you under Settings &rarr; Team.
           </p>
         </div>
         <form action={signOut}>

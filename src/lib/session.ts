@@ -4,7 +4,9 @@ import { forbidden, redirect } from "next/navigation";
 import { cache } from "react";
 import { db } from "@/db";
 import { members } from "@/db/schema";
+import { env } from "@/env";
 import { auth, type Role } from "./auth";
+import { isAllowedDomain } from "./email-domain";
 
 export type SessionUser = { id: string; email: string; name: string; role: Role };
 
@@ -14,15 +16,44 @@ const getAuthUser = cache(async () => {
   return data?.user ?? null;
 });
 
+type AuthUser = NonNullable<Awaited<ReturnType<typeof getAuthUser>>>;
+
 /**
- * Signed-in team member, or null. A Neon Auth account without a `members`
- * row (e.g. someone who signed up directly against the auth URL) is not a member.
+ * Company staff join automatically on their first sign-in, but only when BOTH:
+ * - the email domain is in ALLOWED_EMAIL_DOMAINS, and
+ * - the email is verified. For Microsoft sign-in, Neon Auth marks it verified
+ *   only when Microsoft confirms the user's home tenant owns the domain (the
+ *   `xms_edov` + `acct` claims), so guests, personal accounts and plain
+ *   email/password sign-ups made against the auth URL never qualify.
+ */
+async function autoJoin(user: AuthUser) {
+  if (!user.emailVerified || !isAllowedDomain(user.email, env.ALLOWED_EMAIL_DOMAINS)) {
+    return null;
+  }
+  const [row] = await db
+    .insert(members)
+    .values({
+      authUserId: user.id,
+      email: user.email.toLowerCase(),
+      name: user.name || user.email,
+      role: "member",
+    })
+    // An existing row (e.g. a removed member) is never overwritten here.
+    .onConflictDoNothing()
+    .returning();
+  return row ?? null;
+}
+
+/**
+ * Signed-in team member, or null. A Neon Auth account without an active
+ * `members` row (and not eligible to auto-join) is not a member.
  */
 export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   const authUser = await getAuthUser();
   if (!authUser) return null;
-  const [member] = await db.select().from(members).where(eq(members.authUserId, authUser.id));
-  if (!member) return null;
+  const [existing] = await db.select().from(members).where(eq(members.authUserId, authUser.id));
+  const member = existing ?? (await autoJoin(authUser));
+  if (!member || member.disabledAt) return null;
   return { id: authUser.id, email: member.email, name: member.name, role: member.role };
 });
 
@@ -30,7 +61,7 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
 export async function requireUser(): Promise<SessionUser> {
   const user = await getCurrentUser();
   if (user) return user;
-  // Signed in to Neon Auth but not on the team.
+  // Signed in to Neon Auth but not (or no longer) on the team.
   if (await getAuthUser()) redirect("/no-access");
   redirect("/login");
 }
