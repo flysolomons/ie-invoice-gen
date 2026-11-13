@@ -11,7 +11,7 @@ import { getPaymentForReceipt } from "./payments";
 import { getLogo, getSettings } from "./settings";
 
 async function businessInfo(settings: Awaited<ReturnType<typeof getSettings>>): Promise<PdfBusiness> {
-  const logo = await getLogo(settings);
+  const logo = await getLogo();
   return {
     logo: logo ? { data: logo.data, format: logo.mime === "image/png" ? "png" : "jpg" } : null,
     name: settings.name,

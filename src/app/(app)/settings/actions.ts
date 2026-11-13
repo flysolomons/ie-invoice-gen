@@ -7,7 +7,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { businessSettings } from "@/db/schema";
 import { requireOwner } from "@/lib/session";
-import { ALLOWED_UPLOADS, detectFileType, formatBytes, MAX_UPLOAD_BYTES } from "@/lib/uploads";
+import { detectFileType, formatBytes } from "@/lib/uploads";
 import { getStorage } from "@/server/storage";
 
 const optional = z
@@ -67,31 +67,46 @@ export async function updateSettings(_prev: SettingsState, formData: FormData): 
 
 export type LogoState = { ok?: boolean; error?: string } | null;
 
-/** Upload or replace the business logo shown on invoices and receipts (owner only). */
+/** The logo is stored in the database and loaded on every PDF, so keep it small. */
+const MAX_LOGO_BYTES = 1024 * 1024;
+
+/** Logos from before they moved into the database were files ("branding/…"); tidy those up. */
+async function deleteLegacyLogoFile(oldKey: string | null | undefined) {
+  if (oldKey?.startsWith("branding/")) {
+    await getStorage()
+      .delete(oldKey)
+      .catch(() => {});
+  }
+}
+
+/**
+ * Upload or replace the business logo shown on invoices, receipts, the sidebar
+ * and the login page (owner only). The bytes are stored in the database so every
+ * environment using it (local dev, Vercel) serves the same logo.
+ */
 export async function uploadLogo(_prev: LogoState, formData: FormData): Promise<LogoState> {
   await requireOwner();
   const file = formData.get("logo");
   if (!(file instanceof File) || file.size === 0) return { error: "Choose an image file." };
-  if (file.size > MAX_UPLOAD_BYTES) {
-    return { error: `Logo is ${formatBytes(file.size)}; the limit is ${formatBytes(MAX_UPLOAD_BYTES)}.` };
+  if (file.size > MAX_LOGO_BYTES) {
+    return {
+      error: `Logo is ${formatBytes(file.size)}; the limit is ${formatBytes(MAX_LOGO_BYTES)}. Try a smaller PNG or JPG.`,
+    };
   }
   const data = Buffer.from(await file.arrayBuffer());
   const mime = detectFileType(data);
   // PDFs can embed PNG and JPEG only.
   if (mime !== "image/png" && mime !== "image/jpeg") return { error: "Upload a PNG or JPG image." };
 
-  const key = `branding/logo-${randomUUID()}.${ALLOWED_UPLOADS[mime]}`;
-  const storage = getStorage();
-  await storage.put(key, data, mime);
-
+  // A new version string on every upload busts browser caches of /api/branding/logo?v=…
+  const logo = { logoKey: `logo-${randomUUID()}`, logoData: data, logoMime: mime };
   const [old] = await db.select({ logoKey: businessSettings.logoKey }).from(businessSettings);
   await db
     .insert(businessSettings)
-    .values({ id: 1, logoKey: key })
-    .onConflictDoUpdate({ target: businessSettings.id, set: { logoKey: key } });
-  if (old?.logoKey) await storage.delete(old.logoKey).catch(() => {});
+    .values({ id: 1, ...logo })
+    .onConflictDoUpdate({ target: businessSettings.id, set: logo });
+  await deleteLegacyLogoFile(old?.logoKey);
 
-  // The logo also appears in the sidebar and on the login page.
   revalidatePath("/", "layout");
   return { ok: true };
 }
@@ -99,8 +114,11 @@ export async function uploadLogo(_prev: LogoState, formData: FormData): Promise<
 export async function removeLogo(): Promise<{ error?: string }> {
   await requireOwner();
   const [old] = await db.select({ logoKey: businessSettings.logoKey }).from(businessSettings);
-  await db.update(businessSettings).set({ logoKey: null }).where(eq(businessSettings.id, 1));
-  if (old?.logoKey) await getStorage().delete(old.logoKey).catch(() => {});
+  await db
+    .update(businessSettings)
+    .set({ logoKey: null, logoData: null, logoMime: null })
+    .where(eq(businessSettings.id, 1));
+  await deleteLegacyLogoFile(old?.logoKey);
   revalidatePath("/", "layout");
   return {};
 }

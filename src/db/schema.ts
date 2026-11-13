@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   check,
+  customType,
   date,
   index,
   integer,
@@ -11,6 +12,11 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
+
+/** Raw bytes (Postgres bytea), used for the small business logo. */
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType: () => "bytea",
+});
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -67,7 +73,14 @@ export const businessSettings = pgTable(
     phone: text("phone"),
     address: text("address"),
     taxId: text("tax_id"),
+    /** Logo version (changes on every upload; used to bust caches). Null = no logo. */
     logoKey: text("logo_key"),
+    /**
+     * Logo bytes live in the database (not file storage) so every environment
+     * sharing this database (local dev, Vercel) serves the same logo.
+     */
+    logoData: bytea("logo_data"),
+    logoMime: text("logo_mime"),
     defaultCurrency: text("default_currency").notNull().default("USD"),
     /** Basis points: 1500 = 15.00% */
     defaultTaxRateBp: integer("default_tax_rate_bp").notNull().default(0),

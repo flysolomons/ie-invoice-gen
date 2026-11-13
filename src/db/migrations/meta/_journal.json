@@ -29,6 +29,13 @@
       "when": 1794541932212,
       "tag": "0003_member_disabled",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794545457893,
+      "tag": "0004_logo_in_db",
+      "breakpoints": true
     }
   ]
 }

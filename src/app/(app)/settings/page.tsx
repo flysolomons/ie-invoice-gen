@@ -26,7 +26,7 @@ export default async function SettingsPage() {
           Logo
         </h2>
         <p className="text-sm text-muted-foreground">
-          Shown at the top of invoice and receipt PDFs. PNG or JPG, up to 4 MB.
+          Shown on the login page, sidebar and invoice and receipt PDFs. PNG or JPG, up to 1 MB.
         </p>
         <LogoForm logoVersion={settings.logoKey} businessName={settings.name} readOnly={!isOwner} />
       </section>
