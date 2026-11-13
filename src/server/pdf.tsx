@@ -2,15 +2,18 @@ import "server-only";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { bpToPercent, formatMoney } from "@/lib/money";
 import { PAYMENT_METHOD_LABELS } from "@/lib/payments";
+import type { PdfBusiness } from "@/lib/pdf/business-block";
 import { registerPdfFonts } from "@/lib/pdf/fonts";
 import { InvoicePdf, type InvoicePdfData } from "@/lib/pdf/invoice-pdf";
 import { ReceiptPdf, type ReceiptPdfData } from "@/lib/pdf/receipt-pdf";
 import { getInvoice } from "./invoices";
 import { getPaymentForReceipt } from "./payments";
-import { getSettings } from "./settings";
+import { getLogo, getSettings } from "./settings";
 
-function businessInfo(settings: Awaited<ReturnType<typeof getSettings>>) {
+async function businessInfo(settings: Awaited<ReturnType<typeof getSettings>>): Promise<PdfBusiness> {
+  const logo = await getLogo(settings);
   return {
+    logo: logo ? { data: logo.data, format: logo.mime === "image/png" ? "png" : "jpg" } : null,
     name: settings.name,
     email: settings.email,
     phone: settings.phone,
@@ -37,7 +40,7 @@ export async function renderInvoicePdf(invoiceId: string) {
     currency: invoice.currency,
     issueDate: invoice.issueDate,
     dueDate: invoice.dueDate,
-    business: businessInfo(settings),
+    business: await businessInfo(settings),
     client: {
       name: invoice.client.name,
       email: invoice.client.email,
@@ -83,7 +86,7 @@ export async function renderReceiptPdf(paymentId: string) {
     method: PAYMENT_METHOD_LABELS[row.payment.method],
     reference: row.payment.reference,
     reversed: !!row.payment.voidedAt,
-    business: businessInfo(settings),
+    business: await businessInfo(settings),
     client: row.client,
     invoice: {
       number: row.invoice.number,

@@ -1,5 +1,6 @@
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import { formatMoney } from "@/lib/money";
+import { BusinessBlock, type PdfBusiness } from "./business-block";
 import { BORDER, s } from "./styles";
 
 export type ReceiptPdfData = {
@@ -10,13 +11,7 @@ export type ReceiptPdfData = {
   method: string;
   reference: string | null;
   reversed: boolean;
-  business: {
-    name: string;
-    email: string | null;
-    phone: string | null;
-    address: string | null;
-    taxId: string | null;
-  };
+  business: PdfBusiness;
   client: { name: string; email: string | null; address: string | null };
   invoice: { number: string | null; issueDate: string; totalCents: number };
   /** Non-reversed payments on the invoice up to and including this one. */
@@ -56,13 +51,7 @@ export function ReceiptPdf({ data }: { data: ReceiptPdfData }) {
         )}
 
         <View style={s.between}>
-          <View style={{ maxWidth: 260 }}>
-            <Text style={s.bizName}>{data.business.name}</Text>
-            {data.business.address && <Text style={s.muted}>{data.business.address}</Text>}
-            {data.business.email && <Text style={s.muted}>{data.business.email}</Text>}
-            {data.business.phone && <Text style={s.muted}>{data.business.phone}</Text>}
-            {data.business.taxId && <Text style={s.muted}>Tax ID: {data.business.taxId}</Text>}
-          </View>
+          <BusinessBlock business={data.business} />
           <View style={{ alignItems: "flex-end" }}>
             <Text style={s.h1}>RECEIPT</Text>
             <Text style={{ fontSize: 11, marginTop: 6, lineHeight: 1.2 }}>{data.receiptNumber}</Text>

@@ -62,6 +62,15 @@ class VercelBlobStorage implements FileStorage {
   }
 }
 
+/** Read a stored file fully into memory (for small files such as the logo). */
+export async function readStoredFile(key: string): Promise<Buffer | null> {
+  const file = await getStorage().get(key);
+  if (!file) return null;
+  return file.body instanceof Uint8Array
+    ? Buffer.from(file.body)
+    : Buffer.from(await new Response(file.body).arrayBuffer());
+}
+
 let storage: FileStorage | null = null;
 
 export function getStorage(): FileStorage {

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requireUser } from "@/lib/session";
 import { getSettings } from "@/server/settings";
+import { LogoForm } from "./logo-form";
 import { SettingsForm } from "./settings-form";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -20,6 +21,19 @@ export default async function SettingsPage() {
             : "Only the account owner can change these settings."}
         </p>
       </div>
+      <section className="grid gap-2" aria-labelledby="logo-heading">
+        <h2 id="logo-heading" className="font-medium">
+          Logo
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Shown at the top of invoice and receipt PDFs. PNG or JPG, up to 4 MB.
+        </p>
+        <LogoForm
+          hasLogo={!!settings.logoKey}
+          version={settings.logoKey ?? "none"}
+          readOnly={!isOwner}
+        />
+      </section>
       <SettingsForm
         readOnly={!isOwner}
         defaults={{
