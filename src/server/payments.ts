@@ -39,7 +39,7 @@ const paymentColumns = {
   clientName: clients.name,
 };
 
-export async function listPayments(opts: { q?: string } = {}) {
+export async function listPayments(opts: { q?: string; limit?: number } = {}) {
   const q = opts.q?.trim();
   return db
     .select(paymentColumns)
@@ -57,7 +57,7 @@ export async function listPayments(opts: { q?: string } = {}) {
         : undefined,
     )
     .orderBy(desc(payments.paidAt), desc(payments.createdAt))
-    .limit(500);
+    .limit(opts.limit ?? 500);
 }
 
 export type PaymentRow = Awaited<ReturnType<typeof listPayments>>[number];

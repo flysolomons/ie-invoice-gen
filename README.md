@@ -192,7 +192,7 @@ scripts/seed.ts        owner and default data setup
 
 ## Roadmap
 
-- [ ] Dashboard: outstanding, overdue, received this month, expenses this month
+- [x] Dashboard: outstanding, overdue, received this month, expenses this month
 - [ ] Team invites via shareable invite links
 - [ ] Optional emailing of invoices and receipts (Resend/SMTP); the schema already has an email log
 
