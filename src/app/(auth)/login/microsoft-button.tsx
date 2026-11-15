@@ -33,8 +33,9 @@ export function MicrosoftButton({ nextPath }: { nextPath: string }) {
       // The Neon client may either return { error } or throw (e.g. provider not configured).
       const { error } = await authClient.signIn.social({
         provider: "microsoft",
-        callbackURL: nextPath,
-        errorCallbackURL: "/login?error=microsoft",
+        // Via /signed-in and /login/microsoft-failed so the attempt is logged.
+        callbackURL: `/signed-in?next=${encodeURIComponent(nextPath)}`,
+        errorCallbackURL: "/login/microsoft-failed",
       });
       if (error) fail();
     } catch {

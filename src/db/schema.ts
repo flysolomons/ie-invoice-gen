@@ -61,6 +61,41 @@ export const invites = pgTable("invites", {
 });
 
 /* ------------------------------------------------------------------ */
+/* Sign-in attempts (security log)                                     */
+/* ------------------------------------------------------------------ */
+
+export const signInMethod = pgEnum("sign_in_method", ["password", "microsoft"]);
+/**
+ * success: signed in and let into the app.
+ * blocked: the credentials were valid but the person isn't (or is no longer) on the team.
+ * failed:  wrong password, unknown account, or Microsoft sign-in didn't complete.
+ */
+export const signInOutcome = pgEnum("sign_in_outcome", ["success", "blocked", "failed"]);
+
+export const signInAttempts = pgTable(
+  "sign_in_attempts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    method: signInMethod("method").notNull(),
+    outcome: signInOutcome("outcome").notNull(),
+    /** As typed (lowercased); null for Microsoft failures, where we never learn who it was. */
+    email: text("email"),
+    authUserId: text("auth_user_id"),
+    /** Short machine-readable reason, e.g. "invalid_credentials", "not_on_team". */
+    reason: text("reason"),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    /** Neon Auth session id; unique so a reloaded Microsoft landing page is logged once. */
+    sessionId: text("session_id").unique(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("sign_in_attempts_created_idx").on(t.createdAt),
+    index("sign_in_attempts_email_idx").on(t.email),
+  ],
+);
+
+/* ------------------------------------------------------------------ */
 /* Business settings (single row, id = 1)                              */
 /* ------------------------------------------------------------------ */
 

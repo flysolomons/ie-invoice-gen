@@ -2,6 +2,7 @@
 
 import {
   FileText,
+  History,
   LayoutDashboard,
   type LucideIcon,
   Receipt,
@@ -41,7 +42,10 @@ const MAIN_NAV: NavItem[] = [
   { href: "/expenses", label: "Expenses", icon: Receipt },
 ];
 const SYSTEM_NAV: NavItem[] = [{ href: "/settings", label: "Settings", icon: Settings }];
-const OWNER_NAV: NavItem[] = [{ href: "/settings/team", label: "Team", icon: ShieldCheck }];
+const OWNER_NAV: NavItem[] = [
+  { href: "/settings/team", label: "Team", icon: ShieldCheck },
+  { href: "/settings/sign-ins", label: "Sign-in activity", icon: History },
+];
 
 /** Navy pill for the current page (overrides the default subtle accent). */
 const ACTIVE_PILL =
