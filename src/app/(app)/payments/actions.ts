@@ -1,7 +1,6 @@
 "use server";
 
 import { and, eq, isNull } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { invoices, payments } from "@/db/schema";
 import { todayInTimezone } from "@/lib/invoice-status";
@@ -10,6 +9,7 @@ import { requireOwner, requireUser } from "@/lib/session";
 import { issuesToFieldErrors, paymentSchema } from "@/lib/validation";
 import { takeNextNumber } from "@/server/numbering";
 import { recomputeInvoicePaid } from "@/server/payments";
+import { revalidateInvoiceViews } from "@/server/revalidate";
 import { getSettings } from "@/server/settings";
 
 export type PaymentFormState = {
@@ -27,13 +27,6 @@ class PaymentError extends Error {
   ) {
     super(message);
   }
-}
-
-function revalidate(invoiceId: string) {
-  revalidatePath(`/invoices/${invoiceId}`);
-  revalidatePath("/invoices");
-  revalidatePath("/payments");
-  revalidatePath("/dashboard");
 }
 
 /**
@@ -101,7 +94,7 @@ export async function recordPayment(
       return number;
     });
 
-    revalidate(invoiceId);
+    revalidateInvoiceViews(invoiceId);
     return { ok: true, receiptNumber };
   } catch (e) {
     if (e instanceof PaymentError) return { errors: { [e.field]: e.message }, values };
@@ -110,7 +103,8 @@ export async function recordPayment(
 }
 
 /**
- * Reverse a payment (owner only). Payments are never edited or deleted: the
+ * Reverse a payment (owner only). Payments are never deleted and their amounts
+ * never change (only the receipt number can be amended, see numbering.ts): the
  * row is marked reversed, its receipt number stays used, and the invoice's
  * paid amount and status are recalculated.
  */
@@ -132,6 +126,6 @@ export async function reversePayment(paymentId: string): Promise<{ error?: strin
     return p.invoiceId;
   });
   if (!invoiceId) return { error: "Payment not found or already reversed." };
-  revalidate(invoiceId);
+  revalidateInvoiceViews(invoiceId);
   return {};
 }

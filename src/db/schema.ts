@@ -10,6 +10,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -162,7 +163,11 @@ export const invoices = pgTable(
   "invoices",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    /** Assigned when the invoice is issued, never for drafts. */
+    /**
+     * Assigned when the invoice is issued, never for drafts. Owners may amend it
+     * later; write it only via takeNextNumber() / amendDocNumber() in
+     * src/server/numbering.ts, which keep old numbers reserved.
+     */
     number: text("number").unique(),
     clientId: uuid("client_id")
       .notNull()
@@ -191,6 +196,8 @@ export const invoices = pgTable(
     index("invoices_status_idx").on(t.status),
     index("invoices_client_idx").on(t.clientId),
     index("invoices_due_idx").on(t.dueDate),
+    // "INV-1" and "inv-1" are the same number to a person.
+    uniqueIndex("invoices_number_lower_uidx").on(sql`lower(${t.number})`),
     check("invoices_total_nonneg", sql`${t.totalCents} >= 0`),
     check("invoices_paid_le_total", sql`${t.paidCents} <= ${t.totalCents}`),
   ],
@@ -237,6 +244,7 @@ export const payments = pgTable(
     paidAt: date("paid_at").notNull(),
     method: paymentMethod("method").notNull(),
     reference: text("reference"),
+    /** Same rules as invoices.number: write only via src/server/numbering.ts. */
     receiptNumber: text("receipt_number").notNull().unique(),
     receiptSentAt: timestamp("receipt_sent_at", { withTimezone: true }),
     recordedBy: text("recorded_by"),
@@ -248,6 +256,44 @@ export const payments = pgTable(
     index("payments_invoice_idx").on(t.invoiceId),
     index("payments_paid_at_idx").on(t.paidAt),
     check("payments_amount_positive", sql`${t.amountCents} > 0`),
+    uniqueIndex("payments_receipt_number_lower_uidx").on(sql`lower(${t.receiptNumber})`),
+  ],
+);
+
+/* ------------------------------------------------------------------ */
+/* Number amendments (permanent audit trail)                           */
+/* ------------------------------------------------------------------ */
+
+export const documentKind = pgEnum("document_kind", ["invoice", "receipt"]);
+
+/**
+ * Every change an owner makes to an invoice or receipt number (e.g. to match
+ * the airline / booking system's document number). Never deleted: each
+ * `oldNumber` stays reserved so no other document can ever take it, and
+ * searching an old number still finds the document.
+ */
+export const numberAmendments = pgTable(
+  "number_amendments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: documentKind("kind").notNull(),
+    /** invoices.id for kind "invoice", payments.id for kind "receipt" (no FK: two tables). */
+    docId: uuid("doc_id").notNull(),
+    /** The invoice itself, or the receipt's invoice, so its page can show all changes. */
+    invoiceId: uuid("invoice_id")
+      .notNull()
+      .references(() => invoices.id, { onDelete: "restrict" }),
+    oldNumber: text("old_number").notNull(),
+    newNumber: text("new_number").notNull(),
+    reason: text("reason"),
+    /** Neon Auth user id, plus the name at the time (survives renames and removal). */
+    changedBy: text("changed_by").notNull(),
+    changedByName: text("changed_by_name").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("number_amendments_old_idx").on(t.kind, sql`lower(${t.oldNumber})`),
+    index("number_amendments_invoice_idx").on(t.invoiceId, t.createdAt),
   ],
 );
 

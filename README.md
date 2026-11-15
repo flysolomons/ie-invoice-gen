@@ -9,12 +9,13 @@ A small-team invoicing app built with Next.js. Create and issue invoices, downlo
   - Draft invoices with line items, quantities (up to 3 decimals), per-line tax and a percent or fixed discount. Totals update live and are recalculated on the server.
   - **Issuing** gives an invoice a gap-free number (`INV-0001`, `INV-0002`, …) and locks it from editing.
   - Void (owner only) and duplicate-as-draft.
+  - **Amend number** (owner only): change an issued invoice's or a receipt's number to match the airline or booking system. Old numbers stay reserved, still find the document in search, and every change is kept in a permanent number history.
   - **PDF** download with DRAFT, VOID and PAID watermarks.
   - Status filter: Draft, Issued, Partially paid, Overdue, Paid, Void. Overdue is worked out from the due date in the business timezone, so no scheduled job is needed.
 - **Payments & receipts**
   - Record full or partial payments; the invoice status updates automatically and overpayments are refused.
   - Each payment gets a receipt number (`RCT-0001`, …) and a downloadable **receipt PDF**.
-  - Payments are never edited or deleted. The owner can **reverse** one, which recalculates the invoice and marks the receipt REVERSED.
+  - Payment amounts are never edited and payments are never deleted (only the receipt number can be amended, as above). The owner can **reverse** one, which recalculates the invoice and marks the receipt REVERSED.
 - **Expenses**
   - Record vendor, category, amount, currency, date and notes, with a receipt photo or PDF attached.
   - Uploads are checked by their actual content (JPG, PNG, WebP or PDF, up to 4 MB) and stored privately.
@@ -185,7 +186,7 @@ scripts/seed.ts        owner and default data setup
 
 - **Money** is stored as integer cents and never calculated with floating point. Totals are recalculated on the server on every save. Discounts are spread across lines before tax, and leftover cents are allocated so the parts always add up exactly.
 - **Numbering** uses a row-locked counter inside the issuing transaction, so invoice and receipt numbers are unique and have no gaps, even when several people issue at once.
-- **Issued invoices are immutable.** To correct one, void it and duplicate it. Voided numbers stay used.
+- **Issued invoices are immutable.** To correct one, void it and duplicate it. Voided numbers stay used. The one exception is the number itself: an owner can amend it (or a receipt number). The old number is recorded in `number_amendments` and stays reserved, so no other document can ever take it, and auto-numbering skips any number already taken. All number writes go through `src/server/numbering.ts`, which serialises them on the settings row lock.
 - **Payments** lock the invoice row while recording, so concurrent payments can't exceed the balance. The database also enforces `paid ≤ total`.
 - **Access control**: `src/proxy.ts` redirects signed-out visitors. Every page, server action and file route also checks membership and role on the server.
 - **Uploads** are identified by their content, not by file name or browser-reported type. They're stored under random keys and served with `nosniff` and a sandboxing Content-Security-Policy.

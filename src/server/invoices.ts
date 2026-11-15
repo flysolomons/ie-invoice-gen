@@ -8,6 +8,8 @@ import {
   OPEN_STATUSES,
   todayInTimezone,
 } from "@/lib/invoice-status";
+import { escapeLike } from "@/lib/document-number";
+import { oldNumberMatches } from "./numbering";
 import { getSettings } from "./settings";
 
 export type InvoiceListFilter = {
@@ -52,7 +54,13 @@ export async function listInvoices(filter: InvoiceListFilter = {}) {
       and(
         filter.status && filter.status !== "all" ? statusCondition(filter.status, today) : undefined,
         filter.clientId ? eq(invoices.clientId, filter.clientId) : undefined,
-        q ? or(ilike(invoices.number, `%${q}%`), ilike(clients.name, `%${q}%`)) : undefined,
+        q
+          ? or(
+              ilike(invoices.number, `%${escapeLike(q)}%`),
+              ilike(clients.name, `%${escapeLike(q)}%`),
+              oldNumberMatches("invoice", invoices.id, q),
+            )
+          : undefined,
       ),
     )
     .orderBy(desc(invoices.issueDate), desc(invoices.createdAt))

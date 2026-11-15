@@ -2,7 +2,9 @@ import "server-only";
 import { and, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import { db, type Tx } from "@/db";
 import { clients, invoices, payments } from "@/db/schema";
+import { escapeLike } from "@/lib/document-number";
 import { statusForPaid } from "@/lib/payments";
+import { oldNumberMatches } from "./numbering";
 
 /**
  * Recalculate an invoice's paid amount from its non-reversed payments and set
@@ -49,10 +51,12 @@ export async function listPayments(opts: { q?: string; limit?: number } = {}) {
     .where(
       q
         ? or(
-            ilike(payments.receiptNumber, `%${q}%`),
-            ilike(invoices.number, `%${q}%`),
-            ilike(clients.name, `%${q}%`),
-            ilike(payments.reference, `%${q}%`),
+            ilike(payments.receiptNumber, `%${escapeLike(q)}%`),
+            ilike(invoices.number, `%${escapeLike(q)}%`),
+            ilike(clients.name, `%${escapeLike(q)}%`),
+            ilike(payments.reference, `%${escapeLike(q)}%`),
+            oldNumberMatches("receipt", payments.id, q),
+            oldNumberMatches("invoice", invoices.id, q),
           )
         : undefined,
     )

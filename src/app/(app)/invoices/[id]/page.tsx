@@ -2,7 +2,9 @@ import { Download, FileText } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AmendNumberDialog } from "@/components/app/amend-number-dialog";
 import { ConfirmActionButton } from "@/components/app/confirm-action-button";
+import { NumberHistory } from "@/components/app/number-history";
 import { PaymentsTable } from "@/components/app/payments-table";
 import { PageHeader } from "@/components/app/page-header";
 import { StatusBadge } from "@/components/app/status-badge";
@@ -19,9 +21,11 @@ import { todayInTimezone } from "@/lib/invoice-status";
 import { bpToPercent, centsToInput, formatMoney } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { getInvoice } from "@/server/invoices";
+import { listNumberAmendments } from "@/server/numbering";
 import { listInvoicePayments } from "@/server/payments";
 import { getSettings } from "@/server/settings";
 import { deleteDraft, duplicateInvoice, issueInvoice, voidInvoice } from "../actions";
+import { amendInvoiceNumber } from "../amend-number-actions";
 import { RecordPaymentForm } from "./record-payment-form";
 
 export const metadata: Metadata = { title: "Invoice" };
@@ -32,20 +36,22 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const user = await requireUser();
   const { id } = await params;
   if (!UUID.test(id)) notFound();
-  const [invoice, payments, settings] = await Promise.all([
+  const [invoice, payments, settings, numberChanges] = await Promise.all([
     getInvoice(id),
     listInvoicePayments(id),
     getSettings(),
+    listNumberAmendments(id),
   ]);
   if (!invoice) notFound();
   const canRecordPayment = invoice.status === "sent" || invoice.status === "partially_paid";
+  const isOwner = user.role === "owner";
 
   const fmt = (cents: number) => formatMoney(cents, invoice.currency);
   const isDraft = invoice.status === "draft";
   const balance = invoice.totalCents - invoice.paidCents;
   const pdfUrl = `/api/invoices/${invoice.id}/pdf`;
   const canVoid =
-    user.role === "owner" &&
+    isOwner &&
     (invoice.status === "sent" || invoice.status === "partially_paid") &&
     invoice.paidCents === 0;
 
@@ -95,6 +101,13 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             <a href={`${pdfUrl}?download=1`} className={buttonVariants({ variant: "outline" })}>
               <Download className="size-4" aria-hidden /> Download
             </a>
+            {isOwner && invoice.number && (
+              <AmendNumberDialog
+                kind="invoice"
+                current={invoice.number}
+                action={amendInvoiceNumber.bind(null, invoice.id)}
+              />
+            )}
             {!isDraft && (
               <ConfirmActionButton
                 label="Duplicate"
@@ -246,11 +259,20 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             />
           )}
           {payments.length > 0 ? (
-            <PaymentsTable rows={payments} showInvoice={false} canReverse={user.role === "owner"} />
+            <PaymentsTable
+              rows={payments}
+              showInvoice={false}
+              canReverse={isOwner}
+              canAmend={isOwner}
+            />
           ) : (
             <p className="text-sm text-muted-foreground">No payments recorded yet.</p>
           )}
         </section>
+      )}
+
+      {numberChanges.length > 0 && (
+        <NumberHistory rows={numberChanges} timeZone={settings.timezone} />
       )}
     </div>
   );

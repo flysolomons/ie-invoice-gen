@@ -1,5 +1,6 @@
 import { Download, FileText } from "lucide-react";
 import Link from "next/link";
+import { amendReceiptNumber } from "@/app/(app)/invoices/amend-number-actions";
 import { reversePayment } from "@/app/(app)/payments/actions";
 import {
   Table,
@@ -12,16 +13,20 @@ import {
 import { formatMoney } from "@/lib/money";
 import { PAYMENT_METHOD_LABELS } from "@/lib/payments";
 import type { PaymentRow } from "@/server/payments";
+import { AmendNumberDialog } from "./amend-number-dialog";
 import { ConfirmActionButton } from "./confirm-action-button";
 
 export function PaymentsTable({
   rows,
   showInvoice = true,
   canReverse = false,
+  canAmend = false,
 }: {
   rows: PaymentRow[];
   showInvoice?: boolean;
   canReverse?: boolean;
+  /** Owner only: amend receipt numbers (reversed receipts too). */
+  canAmend?: boolean;
 }) {
   return (
     <div className="overflow-x-auto rounded-lg border">
@@ -93,6 +98,13 @@ export function PaymentsTable({
                     >
                       <Download className="size-4" />
                     </a>
+                    {canAmend && (
+                      <AmendNumberDialog
+                        kind="receipt"
+                        current={p.receiptNumber}
+                        action={amendReceiptNumber.bind(null, p.id)}
+                      />
+                    )}
                     {canReverse && !reversed && (
                       <ConfirmActionButton
                         label="Reverse"

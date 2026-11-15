@@ -40,7 +40,11 @@ export default async function PaymentsPage({
           {q ? "No payments match your search." : "No payments recorded yet."}
         </p>
       ) : (
-        <PaymentsTable rows={rows} canReverse={user.role === "owner"} />
+        <PaymentsTable
+          rows={rows}
+          canReverse={user.role === "owner"}
+          canAmend={user.role === "owner"}
+        />
       )}
     </div>
   );
