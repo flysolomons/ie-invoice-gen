@@ -1,7 +1,8 @@
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import { formatMoney } from "@/lib/money";
-import { BusinessBlock, type PdfBusiness } from "./business-block";
-import { BORDER, s } from "./styles";
+import type { PdfBusiness } from "./business-block";
+import { DocFooter, DocHeader, Field, Watermark } from "./parts";
+import { C, s } from "./styles";
 
 export type ReceiptPdfData = {
   receiptNumber: string;
@@ -21,14 +22,11 @@ export type ReceiptPdfData = {
 export function ReceiptPdf({ data }: { data: ReceiptPdfData }) {
   const fmt = (c: number) => formatMoney(c, data.currency);
   const balanceAfter = Math.max(data.invoice.totalCents - data.paidToDateCents, 0);
+  const paidInFull = !data.reversed && balanceAfter === 0;
 
-  const rows: [string, string][] = [
-    ["Payment date", data.paidAt],
-    ["Payment method", data.method],
-    ...(data.reference ? ([["Reference", data.reference]] as [string, string][]) : []),
-    ["For invoice", `${data.invoice.number ?? "—"} (issued ${data.invoice.issueDate})`],
+  // A reversed payment no longer counts, so running totals would mislead.
+  const summary: [string, string][] = [
     ["Invoice total", fmt(data.invoice.totalCents)],
-    // A reversed payment no longer counts, so a running total here would mislead.
     ...(data.reversed
       ? []
       : ([
@@ -44,58 +42,86 @@ export function ReceiptPdf({ data }: { data: ReceiptPdfData }) {
       creator={data.business.name}
     >
       <Page size="A4" style={s.page}>
-        {data.reversed && (
-          <Text style={s.stamp} fixed>
-            REVERSED
-          </Text>
-        )}
+        {data.reversed && <Watermark text="REVERSED" color={C.red} />}
 
-        <View style={s.between}>
-          <BusinessBlock business={data.business} />
+        <DocHeader
+          business={data.business}
+          title="Receipt"
+          number={data.receiptNumber}
+          status={
+            data.reversed
+              ? { label: "Reversed", tone: "red" }
+              : { label: paidInFull ? "Paid in full" : "Payment received", tone: "green" }
+          }
+        />
+
+        {/* Amount */}
+        <View style={[s.heroCard, s.between, { marginTop: 26, padding: 18, alignItems: "flex-end" }]}>
+          <View>
+            <Text style={s.heroLabel}>Amount received</Text>
+            <Text style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.1 }}>{fmt(data.amountCents)}</Text>
+          </View>
           <View style={{ alignItems: "flex-end" }}>
-            <Text style={s.h1}>RECEIPT</Text>
-            <Text style={{ fontSize: 11, marginTop: 6, lineHeight: 1.2 }}>{data.receiptNumber}</Text>
+            <Text style={{ color: "#c9d1ee", fontSize: 8.5 }}>Paid on {data.paidAt}</Text>
+            <Text style={{ color: "#c9d1ee", fontSize: 8.5 }}>via {data.method}</Text>
           </View>
         </View>
 
-        <View style={[s.row, s.section]}>
-          <View style={{ flex: 1, paddingRight: 16 }}>
+        {/* Parties */}
+        <View style={[s.row, { marginTop: 12, gap: 10 }]}>
+          <View style={[s.card, { flex: 1 }]}>
             <Text style={s.label}>Received from</Text>
-            <Text style={{ fontWeight: 700 }}>{data.client.name}</Text>
+            <Text style={[s.bold, { fontSize: 10.5 }]}>{data.client.name}</Text>
             {data.client.address && <Text>{data.client.address}</Text>}
             {data.client.email && <Text style={s.muted}>{data.client.email}</Text>}
           </View>
-          <View style={{ width: 160, alignItems: "flex-end" }}>
-            <Text style={s.label}>Amount received</Text>
-            <Text style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.2 }}>
-              {fmt(data.amountCents)}
-            </Text>
+          <View style={[s.card, { flex: 1 }]}>
+            <Field label="For invoice" value={data.invoice.number ?? "—"} />
+            <Field label="Invoice date" value={data.invoice.issueDate} last={!data.reference} />
+            {data.reference && <Field label="Payment reference" value={data.reference} last />}
           </View>
         </View>
 
-        <View style={[s.table, { width: 320 }]}>
-          {rows.map(([label, value]) => (
-            <View key={label} style={[s.tr, { borderColor: BORDER }]}>
-              <Text style={[s.muted, { width: 130 }]}>{label}</Text>
-              <Text style={{ flex: 1 }}>{value}</Text>
-            </View>
-          ))}
+        {/* Balance summary */}
+        <View style={{ marginTop: 22, marginLeft: "auto", width: 260 }}>
+          {summary.map(([label, value], i) => {
+            const last = i === summary.length - 1;
+            return (
+              <View
+                key={label}
+                style={[
+                  s.totalLine,
+                  { paddingVertical: 6, borderBottomWidth: last ? 0 : 1, borderColor: C.border },
+                  last ? s.bold : {},
+                ]}
+              >
+                <Text style={last ? {} : s.muted}>{label}</Text>
+                <Text>{value}</Text>
+              </View>
+            );
+          })}
         </View>
 
-        <View style={s.section}>
-          <Text>
+        <View
+          style={{
+            marginTop: 26,
+            padding: 12,
+            borderRadius: 8,
+            borderLeftWidth: 3,
+            borderColor: data.reversed ? C.red : C.green,
+            backgroundColor: data.reversed ? "#fdecee" : "#e9f5ec",
+          }}
+        >
+          <Text style={{ color: data.reversed ? "#9b0712" : C.green, fontWeight: 700 }}>
             {data.reversed
               ? "This payment has been reversed and this receipt is no longer valid."
-              : balanceAfter === 0
+              : paidInFull
                 ? "Thank you — this invoice is now paid in full."
                 : "Thank you for your payment."}
           </Text>
         </View>
 
-        <View style={s.footer} fixed>
-          <Text>{data.business.name}</Text>
-          <Text>{data.receiptNumber}</Text>
-        </View>
+        <DocFooter business={data.business} right={`Receipt ${data.receiptNumber}`} />
       </Page>
     </Document>
   );

@@ -1,7 +1,9 @@
 import { Document, Page, Text, View } from "@react-pdf/renderer";
+import { STATUS_LABELS } from "@/lib/invoice-status";
 import { bpToPercent, formatMoney } from "@/lib/money";
-import { BusinessBlock, type PdfBusiness } from "./business-block";
-import { s } from "./styles";
+import type { PdfBusiness } from "./business-block";
+import { DocFooter, DocHeader, Field, type PillTone, Watermark } from "./parts";
+import { C, s } from "./styles";
 
 /** Plain view-model: everything the PDF needs, nothing from the DB layer. */
 export type InvoicePdfData = {
@@ -30,51 +32,66 @@ export type InvoicePdfData = {
   footer: string | null;
 };
 
+const TONE: Record<InvoicePdfData["status"], PillTone> = {
+  draft: "gray",
+  sent: "navy",
+  partially_paid: "gold",
+  overdue: "red",
+  paid: "green",
+  void: "gray",
+};
+
+const STAMP: Partial<Record<InvoicePdfData["status"], { text: string; color: string }>> = {
+  draft: { text: "DRAFT", color: C.muted },
+  void: { text: "VOID", color: C.red },
+  paid: { text: "PAID", color: C.green },
+};
+
 export function InvoicePdf({ data }: { data: InvoicePdfData }) {
   const fmt = (c: number) => formatMoney(c, data.currency);
   const balance = data.totalCents - data.paidCents;
-  const stamp =
-    data.status === "draft" ? "DRAFT" : data.status === "void" ? "VOID" : data.status === "paid" ? "PAID" : null;
+  const stamp = STAMP[data.status];
   const title = data.number ? `Invoice ${data.number}` : "Draft invoice";
+  const isVoid = data.status === "void";
 
   return (
     <Document title={title} author={data.business.name} creator={data.business.name}>
       <Page size="A4" style={s.page}>
-        {stamp && (
-          <Text style={s.stamp} fixed>
-            {stamp}
-          </Text>
-        )}
+        {stamp && <Watermark text={stamp.text} color={stamp.color} />}
 
-        {/* Header */}
-        <View style={s.between}>
-          <BusinessBlock business={data.business} />
-          <View style={{ alignItems: "flex-end" }}>
-            <Text style={s.h1}>INVOICE</Text>
-            <Text style={{ fontSize: 11, marginTop: 6, lineHeight: 1.2 }}>{data.number ?? "DRAFT"}</Text>
-          </View>
-        </View>
+        <DocHeader
+          business={data.business}
+          title="Invoice"
+          number={data.number ?? "Draft"}
+          status={{ label: STATUS_LABELS[data.status], tone: TONE[data.status] }}
+        />
 
-        {/* Parties & dates */}
-        <View style={[s.row, s.section]}>
-          <View style={{ flex: 1, paddingRight: 16 }}>
-            <Text style={s.label}>Bill to</Text>
-            <Text style={{ fontWeight: 700 }}>{data.client.name}</Text>
+        {/* Who, when, how much */}
+        <View style={[s.row, { marginTop: 26, gap: 10 }]}>
+          <View style={[s.card, { flex: 1.4 }]}>
+            <Text style={s.label}>Billed to</Text>
+            <Text style={[s.bold, { fontSize: 10.5 }]}>{data.client.name}</Text>
             {data.client.address && <Text>{data.client.address}</Text>}
             {data.client.email && <Text style={s.muted}>{data.client.email}</Text>}
             {data.client.taxId && <Text style={s.muted}>Tax ID: {data.client.taxId}</Text>}
           </View>
-          <View style={{ width: 150 }}>
-            <Text style={s.label}>Issue date</Text>
-            <Text>{data.issueDate}</Text>
-            <Text style={[s.label, { marginTop: 8 }]}>Due date</Text>
-            <Text>{data.dueDate}</Text>
+          <View style={[s.card, { flex: 1 }]}>
+            <Field label="Issue date" value={data.issueDate} />
+            <Field label="Due date" value={data.dueDate} />
+            <Field label="Currency" value={data.currency} last />
           </View>
-          <View style={{ width: 120, alignItems: "flex-end" }}>
-            <Text style={s.label}>{data.status === "void" ? "Status" : "Amount due"}</Text>
-            <Text style={{ fontSize: 14, fontWeight: 700 }}>
-              {data.status === "void" ? "Void" : fmt(balance)}
-            </Text>
+          <View style={[s.heroCard, { flex: 1.1, justifyContent: "space-between" }]}>
+            <View>
+              <Text style={s.heroLabel}>{isVoid ? "Status" : "Amount due"}</Text>
+              <Text style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.15 }}>
+                {isVoid ? "Void" : fmt(balance)}
+              </Text>
+            </View>
+            {!isVoid && (
+              <Text style={{ color: "#c9d1ee", fontSize: 8, marginTop: 10 }}>
+                {balance === 0 ? "Paid in full — thank you" : `Due by ${data.dueDate}`}
+              </Text>
+            )}
           </View>
         </View>
 
@@ -90,66 +107,68 @@ export function InvoicePdf({ data }: { data: InvoicePdfData }) {
           {data.items.map((item, i) => (
             <View key={i} style={s.tr} wrap={false}>
               <Text style={s.cDesc}>{item.description}</Text>
-              <Text style={s.cQty}>{item.quantity}</Text>
-              <Text style={s.cPrice}>{fmt(item.unitPriceCents)}</Text>
-              <Text style={s.cTax}>{bpToPercent(item.taxRateBp)}%</Text>
-              <Text style={s.cAmt}>{fmt(item.lineSubtotalCents)}</Text>
+              <Text style={[s.cQty, s.muted]}>{item.quantity}</Text>
+              <Text style={[s.cPrice, s.muted]}>{fmt(item.unitPriceCents)}</Text>
+              <Text style={[s.cTax, s.muted]}>{bpToPercent(item.taxRateBp)}%</Text>
+              <Text style={[s.cAmt, s.bold]}>{fmt(item.lineSubtotalCents)}</Text>
             </View>
           ))}
         </View>
 
-        {/* Totals */}
-        <View style={s.totals} wrap={false}>
-          <View style={s.totalLine}>
-            <Text>Subtotal</Text>
-            <Text>{fmt(data.subtotalCents)}</Text>
+        {/* Notes & terms beside the totals */}
+        <View style={[s.row, { marginTop: 18, gap: 24 }]} wrap={false}>
+          <View style={{ flex: 1 }}>
+            {data.notes && (
+              <View style={{ marginBottom: 12 }}>
+                <Text style={s.label}>Notes</Text>
+                <Text>{data.notes}</Text>
+              </View>
+            )}
+            {data.terms && (
+              <View>
+                <Text style={s.label}>Terms</Text>
+                <Text style={s.muted}>{data.terms}</Text>
+              </View>
+            )}
           </View>
-          {data.discountCents > 0 && (
+          <View style={s.totals}>
             <View style={s.totalLine}>
-              <Text>{data.discountLabel ?? "Discount"}</Text>
-              <Text>−{fmt(data.discountCents)}</Text>
+              <Text style={s.muted}>Subtotal</Text>
+              <Text>{fmt(data.subtotalCents)}</Text>
             </View>
-          )}
-          <View style={s.totalLine}>
-            <Text>Tax</Text>
-            <Text>{fmt(data.taxCents)}</Text>
-          </View>
-          <View style={s.grand}>
-            <Text>Total</Text>
-            <Text>{fmt(data.totalCents)}</Text>
-          </View>
-          {data.paidCents > 0 && (
-            <>
+            {data.discountCents > 0 && (
               <View style={s.totalLine}>
-                <Text>Paid</Text>
-                <Text>−{fmt(data.paidCents)}</Text>
+                <Text style={s.muted}>{data.discountLabel ?? "Discount"}</Text>
+                <Text>−{fmt(data.discountCents)}</Text>
               </View>
-              <View style={[s.totalLine, { fontWeight: 700 }]}>
-                <Text>Balance due</Text>
-                <Text>{fmt(balance)}</Text>
-              </View>
-            </>
-          )}
+            )}
+            <View style={s.totalLine}>
+              <Text style={s.muted}>Tax</Text>
+              <Text>{fmt(data.taxCents)}</Text>
+            </View>
+            <View style={s.grand}>
+              <Text>Total</Text>
+              <Text>{fmt(data.totalCents)}</Text>
+            </View>
+            {data.paidCents > 0 && (
+              <>
+                <View style={[s.totalLine, { marginTop: 4 }]}>
+                  <Text style={s.muted}>Paid</Text>
+                  <Text>−{fmt(data.paidCents)}</Text>
+                </View>
+                <View style={[s.totalLine, s.bold]}>
+                  <Text>Balance due</Text>
+                  <Text>{fmt(balance)}</Text>
+                </View>
+              </>
+            )}
+          </View>
         </View>
 
-        {/* Notes & terms */}
-        {data.notes && (
-          <View style={s.section} wrap={false}>
-            <Text style={s.label}>Notes</Text>
-            <Text>{data.notes}</Text>
-          </View>
-        )}
-        {data.terms && (
-          <View style={s.section} wrap={false}>
-            <Text style={s.label}>Terms</Text>
-            <Text>{data.terms}</Text>
-          </View>
-        )}
-
-        <View style={s.footer} fixed>
-          <Text>{data.footer ?? data.business.name}</Text>
-          <Text render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
-        </View>
+        <DocFooter
+          business={data.business}
+          right={data.footer ?? (data.number ? `Invoice ${data.number}` : "Draft invoice")}
+        />
       </Page>
     </Document>
   );

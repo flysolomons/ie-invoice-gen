@@ -22,7 +22,7 @@ export function BusinessBlock({ business }: { business: PdfBusiness }) {
         // eslint-disable-next-line jsx-a11y/alt-text -- react-pdf Image has no alt prop
         <Image
           src={business.logo}
-          style={{ height: 64, objectFit: "contain", objectPosition: "left", marginBottom: 8 }}
+          style={{ height: 56, objectFit: "contain", objectPosition: "left", marginBottom: 10 }}
         />
       ) : (
         <Text style={s.bizName}>{business.name}</Text>
