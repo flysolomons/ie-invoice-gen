@@ -107,8 +107,8 @@ export function ReceiptPdf({ data }: { data: ReceiptPdfData }) {
             marginTop: 26,
             padding: 12,
             borderRadius: 8,
-            borderLeftWidth: 3,
-            borderColor: data.reversed ? C.red : C.green,
+            borderWidth: 1,
+            borderColor: data.reversed ? "#f5c2c7" : "#bfe0c8",
             backgroundColor: data.reversed ? "#fdecee" : "#e9f5ec",
           }}
         >
