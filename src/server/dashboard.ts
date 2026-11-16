@@ -10,6 +10,25 @@ import { getSettings } from "./settings";
 
 export type Metric = { totals: CurrencyTotal[]; count: number };
 
+/** One month of cash in/out, in the business default currency only. */
+export type TrendMonth = { month: string; receivedCents: number; expensesCents: number };
+
+/** Unpaid balance by how late it is, in the business default currency only. */
+export type AgingBucket = { key: string; label: string; cents: number; count: number };
+
+const AGING_BUCKETS = [
+  { key: "current", label: "Not yet due" },
+  { key: "1-30", label: "1–30 days late" },
+  { key: "31-60", label: "31–60 days late" },
+  { key: "61+", label: "Over 60 days late" },
+] as const;
+
+/** shiftMonth("2026-11", -5) → "2026-06". */
+function shiftMonth(month: string, delta: number): string {
+  const [y, m] = month.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1 + delta, 1)).toISOString().slice(0, 7);
+}
+
 const balance = sql<number>`coalesce(sum(${invoices.totalCents} - ${invoices.paidCents}), 0)::int`;
 const n = sql<number>`count(*)::int`;
 
@@ -31,8 +50,26 @@ export async function getDashboard() {
   const [monthStart, nextMonthStart] = monthRange(month);
   const isOpen = inArray(invoices.status, [...OPEN_STATUSES]);
   const currency = settings.defaultCurrency;
+  const months = Array.from({ length: 6 }, (_, i) => shiftMonth(month, i - 5));
+  const trendStart = `${months[0]}-01`;
+  const daysLate = sql<number>`(${today}::date - ${invoices.dueDate})`;
+  const bucket = sql<string>`case
+    when ${daysLate} <= 0 then 'current'
+    when ${daysLate} <= 30 then '1-30'
+    when ${daysLate} <= 60 then '31-60'
+    else '61+' end`;
 
-  const [outstanding, overdue, paid, spent, overdueList, recentPayments] = await Promise.all([
+  const [
+    outstanding,
+    overdue,
+    paid,
+    spent,
+    overdueList,
+    recentPayments,
+    receivedTrend,
+    expenseTrend,
+    aging,
+  ] = await Promise.all([
     // Unpaid balance on every issued, not-void, not-fully-paid invoice.
     db
       .select({ currency: invoices.currency, cents: balance, count: n })
@@ -91,7 +128,47 @@ export async function getDashboard() {
       .orderBy(asc(invoices.dueDate))
       .limit(5),
     listPayments({ limit: 5 }),
+    // Six-month trend, default currency only (we never convert between currencies).
+    db
+      .select({
+        month: sql<string>`to_char(${payments.paidAt}, 'YYYY-MM')`,
+        cents: sql<number>`coalesce(sum(${payments.amountCents}), 0)::int`,
+      })
+      .from(payments)
+      .innerJoin(invoices, eq(invoices.id, payments.invoiceId))
+      .where(
+        and(
+          isNull(payments.voidedAt),
+          eq(invoices.currency, currency),
+          gte(payments.paidAt, trendStart),
+          lt(payments.paidAt, nextMonthStart),
+        ),
+      )
+      .groupBy(sql`1`),
+    db
+      .select({
+        month: sql<string>`to_char(${expenses.expenseDate}, 'YYYY-MM')`,
+        cents: sql<number>`coalesce(sum(${expenses.amountCents}), 0)::int`,
+      })
+      .from(expenses)
+      .where(
+        and(
+          eq(expenses.currency, currency),
+          gte(expenses.expenseDate, trendStart),
+          lt(expenses.expenseDate, nextMonthStart),
+        ),
+      )
+      .groupBy(sql`1`),
+    db
+      .select({ bucket, cents: balance, count: n })
+      .from(invoices)
+      .where(and(isOpen, eq(invoices.currency, currency)))
+      .groupBy(sql`1`),
   ]);
+
+  const received = new Map(receivedTrend.map((r) => [r.month, r.cents]));
+  const spentBy = new Map(expenseTrend.map((r) => [r.month, r.cents]));
+  const agingBy = new Map(aging.map((r) => [r.bucket, r]));
 
   return {
     month,
@@ -101,5 +178,20 @@ export async function getDashboard() {
     expensesThisMonth: toMetric(spent, currency),
     overdueInvoices: overdueList.map((r) => ({ ...r, effectiveStatus: effectiveStatus(r, today) })),
     recentPayments,
+    currency,
+    trend: months.map(
+      (m): TrendMonth => ({
+        month: m,
+        receivedCents: received.get(m) ?? 0,
+        expensesCents: spentBy.get(m) ?? 0,
+      }),
+    ),
+    aging: AGING_BUCKETS.map(
+      (b): AgingBucket => ({
+        ...b,
+        cents: agingBy.get(b.key)?.cents ?? 0,
+        count: agingBy.get(b.key)?.count ?? 0,
+      }),
+    ),
   };
 }
