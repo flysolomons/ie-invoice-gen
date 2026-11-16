@@ -29,7 +29,7 @@ export function PaymentsTable({
   canAmend?: boolean;
 }) {
   return (
-    <div className="overflow-x-auto rounded-lg border">
+    <div className="overflow-x-auto rounded-xl border bg-card shadow-float">
       <Table>
         <TableHeader>
           <TableRow>

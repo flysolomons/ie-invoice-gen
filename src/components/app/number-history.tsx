@@ -14,14 +14,14 @@ export function NumberHistory({ rows, timeZone }: { rows: NumberAmendment[]; tim
   return (
     <section className="grid gap-3" aria-labelledby="number-history-heading">
       <div>
-        <h2 id="number-history-heading" className="font-medium">
+        <h2 id="number-history-heading" className="text-lg font-semibold">
           Number history
         </h2>
         <p className="text-sm text-muted-foreground">
           Old numbers stay reserved and still find this invoice in search.
         </p>
       </div>
-      <div className="overflow-x-auto rounded-lg border">
+      <div className="overflow-x-auto rounded-xl border bg-card shadow-float">
         <Table>
           <TableHeader>
             <TableRow>

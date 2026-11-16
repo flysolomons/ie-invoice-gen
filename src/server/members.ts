@@ -1,9 +1,19 @@
 import "server-only";
-import { asc, desc, sql } from "drizzle-orm";
+import { asc, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { members } from "@/db/schema";
 
 export type Member = typeof members.$inferSelect;
+
+/** A team member's name by Neon Auth user id (e.g. invoices.created_by), or null. */
+export async function getMemberName(authUserId: string | null): Promise<string | null> {
+  if (!authUserId) return null;
+  const [row] = await db
+    .select({ name: members.name })
+    .from(members)
+    .where(eq(members.authUserId, authUserId));
+  return row?.name ?? null;
+}
 
 /** Active members first (owners, then by name), removed members last. */
 export async function listMembers(): Promise<Member[]> {

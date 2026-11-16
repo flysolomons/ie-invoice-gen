@@ -30,10 +30,6 @@ export const s = StyleSheet.create({
     paddingHorizontal: PAD_X,
     lineHeight: 1.45,
   },
-  /** Navy band across the top of every page, with a gold accent. */
-  topBand: { position: "absolute", top: 0, left: 0, right: 0, height: 8, backgroundColor: C.navy },
-  topAccent: { position: "absolute", top: 0, left: PAD_X, width: 72, height: 8, backgroundColor: C.gold },
-
   row: { flexDirection: "row" },
   between: { flexDirection: "row", justifyContent: "space-between" },
   muted: { color: C.muted },

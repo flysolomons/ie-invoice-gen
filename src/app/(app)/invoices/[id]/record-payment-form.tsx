@@ -48,7 +48,7 @@ export function RecordPaymentForm({
       action={action}
       // Re-mount after each recorded payment so defaults pick up the new balance.
       key={balance}
-      className="grid gap-3 rounded-lg border p-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1.5fr_auto] lg:items-end"
+      className="grid gap-3 rounded-xl border bg-card p-4 shadow-float sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1.5fr_auto] lg:items-end"
     >
       <Field id="pay-amount" label={`Amount (${currency})`} error={err("amount")}>
         <Input

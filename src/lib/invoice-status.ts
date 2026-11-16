@@ -44,3 +44,17 @@ export function addDays(date: string, days: number): string {
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
+
+/** Whole days from `from` to `to` (YYYY-MM-DD); negative if `to` is earlier. */
+export function daysBetween(from: string, to: string): number {
+  const ms = Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`);
+  return Math.round(ms / 86_400_000);
+}
+
+/** "Due today", "Due in 3 days", "5 days overdue" for an open invoice. */
+export function dueLabel(dueDate: string, today: string): string {
+  const d = daysBetween(today, dueDate);
+  if (d === 0) return "Due today";
+  if (d > 0) return `Due in ${d} day${d === 1 ? "" : "s"}`;
+  return `${-d} day${d === -1 ? "" : "s"} overdue`;
+}
