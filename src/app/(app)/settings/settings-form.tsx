@@ -1,5 +1,7 @@
 "use client";
 
+import { cn } from "cn";
+import { CARD } from "@/components/app/blocks";
 import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -53,8 +55,11 @@ export function SettingsForm({ defaults, readOnly }: { defaults: Defaults; readO
 
   return (
     <form action={action} className="grid gap-6">
-      <fieldset className="grid gap-4 sm:grid-cols-2">
-        <legend className="mb-2 font-medium">Business</legend>
+      <fieldset className={cn(CARD, "grid gap-4 p-5 sm:grid-cols-2")}>
+        <legend className="float-left mb-1 w-full sm:col-span-2">
+          <span className="font-medium">Business</span>
+          <span className="block text-sm text-muted-foreground">Shown on every invoice and receipt.</span>
+        </legend>
         <div className="sm:col-span-2">{field("name", "Business name", { required: true })}</div>
         {field("email", "Email", { type: "email" })}
         {field("phone", "Phone")}
@@ -66,8 +71,13 @@ export function SettingsForm({ defaults, readOnly }: { defaults: Defaults; readO
         {field("emailFromName", "Email sender name")}
       </fieldset>
 
-      <fieldset className="grid gap-4 sm:grid-cols-2">
-        <legend className="mb-2 font-medium">Invoicing defaults</legend>
+      <fieldset className={cn(CARD, "grid gap-4 p-5 sm:grid-cols-2")}>
+        <legend className="float-left mb-1 w-full sm:col-span-2">
+          <span className="font-medium">Invoicing defaults</span>
+          <span className="block text-sm text-muted-foreground">
+            Used for new invoices. Changing a prefix only affects numbers issued afterwards.
+          </span>
+        </legend>
         {field("defaultCurrency", "Currency", { maxLength: 3 })}
         {field("defaultTaxRate", "Tax rate (%)", { type: "number", step: "0.01", min: 0, max: 100 })}
         {field("defaultPaymentTermsDays", "Payment terms (days)", { type: "number", min: 0, max: 365 })}

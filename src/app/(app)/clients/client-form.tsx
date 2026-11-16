@@ -39,7 +39,7 @@ export function ClientForm({ id, defaults }: { id: string | null; defaults: Clie
   });
 
   return (
-    <form action={action} className="grid max-w-2xl gap-4 sm:grid-cols-2">
+    <form action={action} className="grid gap-4 sm:grid-cols-2">
       <Field id="name" label="Name" error={err("name")} className="sm:col-span-2">
         <Input id="name" name="name" defaultValue={defaults.name} required {...invalid("name")} />
       </Field>

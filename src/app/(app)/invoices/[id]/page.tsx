@@ -13,6 +13,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AmendNumberDialog } from "@/components/app/amend-number-dialog";
+import { CARD, StatCard } from "@/components/app/blocks";
 import { ConfirmActionButton } from "@/components/app/confirm-action-button";
 import { NumberHistory } from "@/components/app/number-history";
 import { PaymentsTable } from "@/components/app/payments-table";
@@ -42,8 +43,6 @@ export const metadata: Metadata = { title: "Invoice" };
 
 const UUID = /^[0-9a-f-]{36}$/i;
 
-const CARD = "rounded-xl border bg-card shadow-float";
-
 function Notice({
   icon: Icon,
   tone,
@@ -63,46 +62,6 @@ function Notice({
     <div className={cn("flex items-start gap-3 rounded-xl border px-4 py-3 text-sm", tones[tone])}>
       <Icon className="mt-0.5 size-4 shrink-0" aria-hidden />
       <div>{children}</div>
-    </div>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  hint,
-  hero,
-  alert,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  hero?: boolean;
-  alert?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "grid gap-1 rounded-xl p-4",
-        hero ? "bg-primary text-primary-foreground shadow-float" : `${CARD}`,
-      )}
-    >
-      <span className={cn("text-xs font-medium", hero ? "text-primary-foreground/75" : "text-muted-foreground")}>
-        {label}
-      </span>
-      <span className={cn("text-xl font-semibold tabular-nums", alert && "text-danger-foreground")}>
-        {value}
-      </span>
-      {hint && (
-        <span
-          className={cn(
-            "text-xs",
-            hero ? "text-primary-foreground/75" : alert ? "text-danger-foreground" : "text-muted-foreground",
-          )}
-        >
-          {hint}
-        </span>
-      )}
     </div>
   );
 }
@@ -251,19 +210,19 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
 
       {/* Summary */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Total" value={fmt(invoice.totalCents)} hint={`${invoice.items.length} line item${invoice.items.length === 1 ? "" : "s"}`} />
-        <Stat
+        <StatCard label="Total" value={fmt(invoice.totalCents)} hint={`${invoice.items.length} line item${invoice.items.length === 1 ? "" : "s"}`} />
+        <StatCard
           label="Paid"
           value={fmt(invoice.paidCents)}
           hint={isDraft || isVoid ? undefined : `${paidPct}% of total`}
         />
-        <Stat
+        <StatCard
           label="Balance due"
           value={isVoid ? "—" : fmt(balance)}
           hint={isVoid ? "Void" : balance === 0 && !isDraft ? "Nothing left to pay" : undefined}
           hero
         />
-        <Stat
+        <StatCard
           label="Due date"
           value={invoice.dueDate}
           hint={isOpen ? dueLabel(invoice.dueDate, today) : `Issued ${invoice.issueDate}`}

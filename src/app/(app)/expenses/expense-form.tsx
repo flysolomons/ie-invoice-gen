@@ -44,7 +44,7 @@ export function ExpenseForm({
   });
 
   return (
-    <form action={action} className="grid max-w-2xl gap-4 sm:grid-cols-2">
+    <form action={action} className="grid gap-4 sm:grid-cols-2">
       <Field id="vendor" label="Vendor / paid to" error={err("vendor")} className="sm:col-span-2">
         <Input id="vendor" name="vendor" defaultValue={v("vendor")} required {...a11y("vendor")} />
       </Field>

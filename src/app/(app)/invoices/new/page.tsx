@@ -27,7 +27,11 @@ export default async function NewInvoicePage({
 
   return (
     <div className="grid gap-6">
-      <PageHeader title="New invoice" description="Saved as a draft. You can issue it later." />
+      <PageHeader
+        back={{ href: "/invoices", label: "Invoices" }}
+        title="New invoice"
+        description="Saved as a draft. You can issue it later."
+      />
       <InvoiceForm
         id={null}
         clients={clients}

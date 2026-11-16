@@ -1,10 +1,12 @@
 "use client";
 
+import { cn } from "cn";
 import { Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
+import { CARD } from "@/components/app/blocks";
 import { Field } from "@/components/forms/field";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
@@ -103,8 +105,9 @@ export function InvoiceForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="grid gap-8" noValidate>
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <form onSubmit={onSubmit} className="grid gap-6" noValidate>
+      <section className={cn(CARD, "grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4")}>
+        <h2 className="font-medium sm:col-span-2 lg:col-span-4">Invoice details</h2>
         <Field id="clientId" label="Client" error={err("clientId")} className="sm:col-span-2">
           <NativeSelect
             id="clientId"
@@ -160,16 +163,27 @@ export function InvoiceForm({
         </Field>
       </section>
 
-      <section className="grid gap-3">
+      <section className={cn(CARD, "grid gap-3 p-5")}>
         <h2 className="font-medium">Line items</h2>
         {err("items") && <p className="text-sm text-destructive">{err("items")}</p>}
+        <div
+          aria-hidden
+          className="hidden gap-2 border-b pb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase sm:grid sm:grid-cols-[1fr_6rem_8rem_6rem_7rem_2.25rem]"
+        >
+          <span>Description</span>
+          <span>Qty</span>
+          <span>Unit price</span>
+          <span>Tax %</span>
+          <span className="text-right">Amount</span>
+          <span />
+        </div>
         <div className="grid gap-3">
           {items.map((item, idx) => {
             const k = (f: string) => `items.${idx}.${f}`;
             return (
               <fieldset
                 key={item.key}
-                className="grid grid-cols-2 gap-2 rounded-lg border p-3 sm:grid-cols-[1fr_6rem_8rem_6rem_7rem_auto] sm:items-start sm:border-0 sm:p-0"
+                className="grid grid-cols-2 gap-2 rounded-lg border p-3 sm:grid-cols-[1fr_6rem_8rem_6rem_7rem_2.25rem] sm:items-start sm:border-0 sm:p-0"
               >
                 <legend className="sr-only">Line {idx + 1}</legend>
                 <Field id={k("description")} label={<span className="sm:sr-only">Description</span>} error={err(k("description"))} className="col-span-2 sm:col-span-1">
@@ -211,7 +225,7 @@ export function InvoiceForm({
                     {...a11y(k("taxRate"))}
                   />
                 </Field>
-                <p className="self-center text-right text-sm tabular-nums sm:pt-1.5">
+                <p className="self-center text-right text-sm font-medium tabular-nums sm:pt-1.5">
                   {fmt(totals.lines[idx]?.lineSubtotalCents ?? 0)}
                 </p>
                 <Button
@@ -241,7 +255,7 @@ export function InvoiceForm({
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[1fr_20rem]">
-        <div className="grid gap-4">
+        <div className={cn(CARD, "grid gap-4 p-5")}>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field id="discountType" label="Discount">
               <NativeSelect
@@ -288,22 +302,22 @@ export function InvoiceForm({
           </Field>
         </div>
 
-        <dl className="grid h-fit gap-2 rounded-lg border p-4 text-sm" aria-live="polite">
+        <dl className={cn(CARD, "grid h-fit gap-2 p-5 text-sm")} aria-live="polite">
           <div className="flex justify-between">
-            <dt>Subtotal</dt>
+            <dt className="text-muted-foreground">Subtotal</dt>
             <dd className="tabular-nums">{fmt(totals.subtotalCents)}</dd>
           </div>
           {totals.discountCents > 0 && (
             <div className="flex justify-between">
-              <dt>Discount</dt>
+              <dt className="text-muted-foreground">Discount</dt>
               <dd className="tabular-nums">−{fmt(totals.discountCents)}</dd>
             </div>
           )}
           <div className="flex justify-between">
-            <dt>Tax</dt>
+            <dt className="text-muted-foreground">Tax</dt>
             <dd className="tabular-nums">{fmt(totals.taxCents)}</dd>
           </div>
-          <div className="flex justify-between border-t pt-2 text-base font-semibold">
+          <div className="mt-1 flex justify-between rounded-lg bg-primary px-3 py-2 text-base font-semibold text-primary-foreground">
             <dt>Total</dt>
             <dd className="tabular-nums">{fmt(totals.totalCents)}</dd>
           </div>
@@ -325,7 +339,7 @@ export function InvoiceForm({
         <Button type="submit" disabled={pending}>
           {pending ? "Saving…" : "Save draft"}
         </Button>
-        <Link href={id ? `/invoices/${id}` : "/invoices"} className="self-center text-sm underline-offset-4 hover:underline">
+        <Link href={id ? `/invoices/${id}` : "/invoices"} className={buttonVariants({ variant: "ghost" })}>
           Cancel
         </Link>
       </div>

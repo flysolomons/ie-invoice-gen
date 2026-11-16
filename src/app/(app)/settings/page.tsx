@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { Panel } from "@/components/app/blocks";
+import { PageHeader } from "@/components/app/page-header";
 import { requireUser } from "@/lib/session";
 import { getSettings } from "@/server/settings";
 import { LogoForm } from "./logo-form";
@@ -12,24 +14,21 @@ export default async function SettingsPage() {
   const isOwner = user.role === "owner";
 
   return (
-    <div className="grid max-w-2xl gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Business settings</h1>
-        <p className="text-sm text-muted-foreground">
-          {isOwner
+    <div className="grid max-w-3xl gap-6">
+      <PageHeader
+        title="Business settings"
+        description={
+          isOwner
             ? "These details appear on every invoice and receipt."
-            : "Only the account owner can change these settings."}
-        </p>
-      </div>
-      <section className="grid gap-2" aria-labelledby="logo-heading">
-        <h2 id="logo-heading" className="font-medium">
-          Logo
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Shown on the login page, sidebar and invoice and receipt PDFs. PNG or JPG, up to 1 MB.
-        </p>
+            : "Only an owner can change these settings."
+        }
+      />
+      <Panel
+        title="Logo"
+        description="Shown on the login page, sidebar and invoice and receipt PDFs. PNG or JPG, up to 1 MB."
+      >
         <LogoForm logoVersion={settings.logoKey} businessName={settings.name} readOnly={!isOwner} />
-      </section>
+      </Panel>
       <SettingsForm
         readOnly={!isOwner}
         defaults={{

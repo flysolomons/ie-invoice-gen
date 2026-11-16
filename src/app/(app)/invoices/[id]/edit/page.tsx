@@ -40,7 +40,11 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
 
   return (
     <div className="grid gap-6">
-      <PageHeader title="Edit draft invoice" />
+      <PageHeader
+        back={{ href: `/invoices/${invoice.id}`, label: "Back to invoice" }}
+        title="Edit draft invoice"
+        description="Changes are saved to the draft. Issue it from the invoice page when ready."
+      />
       <InvoiceForm
         id={invoice.id}
         clients={options}

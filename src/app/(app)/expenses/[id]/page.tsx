@@ -1,10 +1,10 @@
-import { Download, FileText } from "lucide-react";
+import { Download, FileText, Paperclip } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Panel } from "@/components/app/blocks";
 import { ConfirmActionButton } from "@/components/app/confirm-action-button";
 import { PageHeader } from "@/components/app/page-header";
 import { buttonVariants } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { todayInTimezone } from "@/lib/invoice-status";
 import { centsToInput, formatMoney } from "@/lib/money";
 import { requireUser } from "@/lib/session";
@@ -36,6 +36,7 @@ export default async function ExpensePage({ params }: { params: Promise<{ id: st
   return (
     <div className="grid gap-6">
       <PageHeader
+        back={{ href: "/expenses", label: "Expenses" }}
         title={expense.vendor}
         description={`${formatMoney(expense.amountCents, expense.currency)} on ${expense.expenseDate}`}
         actions={
@@ -49,66 +50,67 @@ export default async function ExpensePage({ params }: { params: Promise<{ id: st
         }
       />
 
-      <section className="grid gap-3" aria-labelledby="receipt-heading">
-        <h2 id="receipt-heading" className="font-medium">
-          Receipt
-        </h2>
-        {expense.fileKey ? (
-          <div className="grid gap-3">
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="text-muted-foreground">
-                {expense.fileName} ({formatBytes(expense.fileSize ?? 0)})
-              </span>
-              <a
-                href={fileUrl}
-                target="_blank"
-                rel="noopener"
-                className={buttonVariants({ variant: "outline", size: "sm" })}
-              >
-                <FileText className="size-4" aria-hidden /> Open
-              </a>
-              <a
-                href={`${fileUrl}?download=1`}
-                className={buttonVariants({ variant: "outline", size: "sm" })}
-              >
-                <Download className="size-4" aria-hidden /> Download
-              </a>
+      <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
+        <Panel title="Details" className="h-fit">
+          <ExpenseForm
+            id={expense.id}
+            categories={categories}
+            today={todayInTimezone(settings.timezone)}
+            currentFile={
+              expense.fileKey ? { name: expense.fileName ?? "receipt", size: expense.fileSize ?? 0 } : null
+            }
+            defaults={{
+              vendor: expense.vendor,
+              categoryId: expense.categoryId ?? "",
+              amount: centsToInput(expense.amountCents),
+              currency: expense.currency,
+              expenseDate: expense.expenseDate,
+              notes: expense.notes ?? "",
+            }}
+          />
+        </Panel>
+
+        <Panel title="Receipt" className="h-fit" bodyClassName="grid gap-3">
+          {expense.fileKey ? (
+            <>
+              {isImage ? (
+                // eslint-disable-next-line @next/next/no-img-element -- private, auth-gated file; next/image can't fetch it
+                <img
+                  src={fileUrl}
+                  alt={`Receipt from ${expense.vendor}`}
+                  className="max-h-96 w-full rounded-lg border bg-muted/40 object-contain"
+                />
+              ) : (
+                <div className="grid place-items-center gap-2 rounded-lg border bg-muted/40 py-10 text-muted-foreground">
+                  <FileText className="size-8" aria-hidden />
+                  <span className="text-sm">PDF receipt</span>
+                </div>
+              )}
+              <p className="truncate text-sm text-muted-foreground" title={expense.fileName ?? undefined}>
+                {expense.fileName} · {formatBytes(expense.fileSize ?? 0)}
+              </p>
+              <div className="flex gap-2">
+                <a
+                  href={fileUrl}
+                  target="_blank"
+                  rel="noopener"
+                  className={buttonVariants({ variant: "outline", size: "sm" })}
+                >
+                  <FileText aria-hidden /> Open
+                </a>
+                <a href={`${fileUrl}?download=1`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                  <Download aria-hidden /> Download
+                </a>
+              </div>
+            </>
+          ) : (
+            <div className="grid place-items-center gap-2 rounded-lg border border-dashed py-10 text-center text-sm text-muted-foreground">
+              <Paperclip className="size-6" aria-hidden />
+              No receipt attached yet. Add one in the details form.
             </div>
-            {isImage && (
-              // eslint-disable-next-line @next/next/no-img-element -- private, auth-gated file; next/image can't fetch it
-              <img
-                src={fileUrl}
-                alt={`Receipt from ${expense.vendor}`}
-                className="max-h-96 w-fit max-w-full rounded-lg border object-contain"
-              />
-            )}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">No receipt attached. Add one below.</p>
-        )}
-      </section>
-
-      <Separator />
-
-      <section className="grid gap-3">
-        <h2 className="font-medium">Details</h2>
-        <ExpenseForm
-          id={expense.id}
-          categories={categories}
-          today={todayInTimezone(settings.timezone)}
-          currentFile={
-            expense.fileKey ? { name: expense.fileName ?? "receipt", size: expense.fileSize ?? 0 } : null
-          }
-          defaults={{
-            vendor: expense.vendor,
-            categoryId: expense.categoryId ?? "",
-            amount: centsToInput(expense.amountCents),
-            currency: expense.currency,
-            expenseDate: expense.expenseDate,
-            notes: expense.notes ?? "",
-          }}
-        />
-      </section>
+          )}
+        </Panel>
+      </div>
     </div>
   );
 }

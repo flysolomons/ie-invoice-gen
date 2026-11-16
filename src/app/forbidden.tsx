@@ -1,13 +1,10 @@
-import Link from "next/link";
+import { Lock } from "lucide-react";
+import { StatusScreen } from "@/components/app/status-screen";
 
 export default function Forbidden() {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center">
-      <h1 className="text-xl font-semibold">Owner access required</h1>
-      <p className="text-sm text-muted-foreground">Ask the account owner to make this change.</p>
-      <Link href="/dashboard" className="text-sm underline underline-offset-4">
-        Back to dashboard
-      </Link>
-    </main>
+    <StatusScreen icon={Lock} title="Owner access required">
+      Only an owner can do this. Ask an owner on your team to make the change.
+    </StatusScreen>
   );
 }

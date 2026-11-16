@@ -1,8 +1,10 @@
+import { cn } from "cn";
+import { Users } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CARD, EmptyState, SearchBox } from "@/components/app/blocks";
 import { PageHeader } from "@/components/app/page-header";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -11,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { initials } from "@/lib/initials";
 import { requireUser } from "@/lib/session";
 import { listClients } from "@/server/clients";
 
@@ -26,10 +29,19 @@ export default async function ClientsPage({
   const showArchived = archived === "1";
   const rows = await listClients({ q, archived: showArchived });
 
+  const tab = (value: boolean) => {
+    const p = new URLSearchParams();
+    if (value) p.set("archived", "1");
+    if (q) p.set("q", q);
+    const qs = p.toString();
+    return qs ? `/clients?${qs}` : "/clients";
+  };
+
   return (
     <div className="grid gap-6">
       <PageHeader
         title="Clients"
+        description="The companies and people you invoice."
         actions={
           <Link href="/clients/new" className={buttonVariants()}>
             New client
@@ -37,51 +49,89 @@ export default async function ClientsPage({
         }
       />
 
-      <form className="flex flex-wrap items-center gap-2" role="search">
-        <Input
-          name="q"
-          defaultValue={q}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <nav aria-label="Show clients" className={cn(CARD, "flex gap-1 p-1")}>
+          {(
+            [
+              [false, "Active"],
+              [true, "Include archived"],
+            ] as const
+          ).map(([value, label]) => {
+            const active = showArchived === value;
+            return (
+              <Link
+                key={label}
+                href={tab(value)}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                  active
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                {label}
+              </Link>
+            );
+          })}
+        </nav>
+        <SearchBox
+          label="Search clients"
           placeholder="Search name or email"
-          aria-label="Search clients"
-          className="max-w-xs"
+          defaultValue={q}
+          keep={{ archived: showArchived ? "1" : undefined }}
         />
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="archived" value="1" defaultChecked={showArchived} />
-          Include archived
-        </label>
-        <Button type="submit" variant="outline">
-          Search
-        </Button>
-      </form>
+      </div>
 
       {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          {q ? "No clients match your search." : "No clients yet. Add your first one."}
-        </p>
+        <EmptyState
+          icon={Users}
+          title={q ? "No clients match your search" : "No clients yet"}
+          action={
+            !q && (
+              <Link href="/clients/new" className={buttonVariants()}>
+                Add your first client
+              </Link>
+            )
+          }
+        >
+          {q ? "Try part of the name or email address." : "Add a client to start invoicing them."}
+        </EmptyState>
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
+        <div className={cn(CARD, "overflow-x-auto")}>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead className="hidden sm:table-cell">Phone</TableHead>
+                <TableHead>Client</TableHead>
+                <TableHead className="hidden md:table-cell">Phone</TableHead>
                 <TableHead className="text-right">Invoices</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell className="font-medium">
-                    <Link href={`/clients/${c.id}`} className="hover:underline">
-                      {c.name}
+                <TableRow key={c.id} className={c.archivedAt ? "text-muted-foreground" : undefined}>
+                  <TableCell>
+                    <Link href={`/clients/${c.id}`} className="group flex items-center gap-3">
+                      <span
+                        aria-hidden
+                        className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-xs font-semibold text-primary"
+                      >
+                        {initials(c.name)}
+                      </span>
+                      <span className="grid min-w-0">
+                        <span className="truncate font-medium group-hover:underline">
+                          {c.name}
+                          {c.archivedAt && (
+                            <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">
+                              Archived
+                            </span>
+                          )}
+                        </span>
+                        <span className="truncate text-xs text-muted-foreground">{c.email ?? "No email"}</span>
+                      </span>
                     </Link>
-                    {c.archivedAt && (
-                      <span className="ml-2 text-xs text-muted-foreground">(archived)</span>
-                    )}
                   </TableCell>
-                  <TableCell>{c.email ?? "—"}</TableCell>
-                  <TableCell className="hidden sm:table-cell">{c.phone ?? "—"}</TableCell>
+                  <TableCell className="hidden text-muted-foreground md:table-cell">{c.phone ?? "—"}</TableCell>
                   <TableCell className="text-right tabular-nums">{c.invoiceCount}</TableCell>
                 </TableRow>
               ))}
